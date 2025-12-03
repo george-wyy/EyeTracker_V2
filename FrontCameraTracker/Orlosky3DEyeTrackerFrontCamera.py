@@ -54,8 +54,14 @@ circle_y = EXT_CY
 # Function to detect available cameras
 def detect_cameras(max_cams=10):
     available_cameras = []
+    backend = cv2.CAP_MSMF
+    if sys.platform == "darwin":
+        backend = cv2.CAP_AVFOUNDATION
+    elif sys.platform.startswith("linux"):
+        backend = cv2.CAP_V4L2
+
     for i in range(max_cams):
-        cap = cv2.VideoCapture(i, cv2.CAP_MSMF)
+        cap = cv2.VideoCapture(i, backend)
         cap.set(cv2.CAP_PROP_FPS, 30)
         if cap.isOpened():
             available_cameras.append(i)
@@ -978,16 +984,22 @@ def process_camera():
     global selected_camera, circle_x, circle_y, calibrated
 
     cam_index = int(selected_camera.get())
+    external_index = int(selected_external_camera.get()) if 'selected_external_camera' in globals() else cam_index
+
+    backend = cv2.CAP_MSMF
+    if sys.platform == "darwin":
+        backend = cv2.CAP_AVFOUNDATION
+    elif sys.platform.startswith("linux"):
+        backend = cv2.CAP_V4L2
 
     # ---- Eye camera (existing) ----
-    eye_cap = cv2.VideoCapture(0, cv2.CAP_MSMF)
+    eye_cap = cv2.VideoCapture(cam_index, backend)
     if not eye_cap.isOpened():
         print(f"Error: Could not open eye camera at index {cam_index}.")
         return
 
     # ---- External camera (new) ----
-    external_index = cam_index   # adjust if needed
-    external_cap = cv2.VideoCapture(1, cv2.CAP_MSMF)
+    external_cap = cv2.VideoCapture(external_index, backend)
 
     if external_cap.isOpened():
         external_cap.set(cv2.CAP_PROP_FRAME_WIDTH, EXT_WIDTH)
@@ -1086,6 +1098,7 @@ def process_video():
 # GUI for selecting camera or video
 def selection_gui():
     global selected_camera
+    global selected_external_camera
     cameras = detect_cameras()
 
     # Create Tkinter window
@@ -1096,10 +1109,20 @@ def selection_gui():
     tk.Label(root, text="Select Camera:").pack(pady=5)
 
     selected_camera = tk.StringVar()
-    selected_camera.set(str(cameras[0]) if cameras else "No cameras found")
+    selected_external_camera = tk.StringVar()
+    if cameras:
+        selected_camera.set(str(cameras[0]))
+        selected_external_camera.set(str(cameras[1] if len(cameras) > 1 else cameras[0]))
+    else:
+        selected_camera.set("No cameras found")
+        selected_external_camera.set("No cameras found")
 
     camera_dropdown = ttk.Combobox(root, textvariable=selected_camera, values=[str(cam) for cam in cameras])
     camera_dropdown.pack(pady=5)
+
+    tk.Label(root, text="Select External Camera:").pack(pady=5)
+    external_camera_dropdown = ttk.Combobox(root, textvariable=selected_external_camera, values=[str(cam) for cam in cameras])
+    external_camera_dropdown.pack(pady=5)
 
     tk.Button(root, text="Start Camera", command=lambda: [root.destroy(), process_camera()]).pack(pady=5)
     tk.Button(root, text="Browse Video", command=lambda: [root.destroy(), process_video()]).pack(pady=5)

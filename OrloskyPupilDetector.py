@@ -6,6 +6,8 @@ import tkinter as tk
 import os
 from tkinter import filedialog
 import matplotlib.pyplot as plt
+import sys
+import argparse
 
 # Crop the image to maintain a specific aspect ratio (width:height) before resizing. 
 def crop_to_aspect_ratio(image, width=640, height=480):
@@ -403,16 +405,23 @@ def process_frame(frame):
     return final_rotated_rect
 
 # Loads a video and finds the pupil in each frame
-def process_video(video_path, input_method):
+def process_video(video_path, input_method, camera_index=0):
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4 format
-    out = cv2.VideoWriter('C:/Storage/Source Videos/output_video.mp4', fourcc, 30.0, (640, 480))  # Output video filename, codec, frame rate, and frame size
+    out = cv2.VideoWriter(os.path.join(os.getcwd(), 'output_video.mp4'), fourcc, 30.0, (640, 480))
 
     if input_method == 1:
         cap = cv2.VideoCapture(video_path)
     elif input_method == 2:
-        cap = cv2.VideoCapture(00, cv2.CAP_DSHOW)  # Camera input
-        cap.set(cv2.CAP_PROP_EXPOSURE, -5)
+        backend = cv2.CAP_DSHOW
+        if sys.platform == "darwin":
+            backend = cv2.CAP_AVFOUNDATION
+        elif sys.platform.startswith("linux"):
+            backend = cv2.CAP_V4L2
+        cap = cv2.VideoCapture(camera_index, backend)
+        cap.set(cv2.CAP_PROP_FPS, 30)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     else:
         print("Invalid video source.")
         return
@@ -485,19 +494,32 @@ def process_video(video_path, input_method):
 #This is just for my debugging convenience :)
 def select_video():
     root = tk.Tk()
-    root.withdraw()  # Hide the main window
-    video_path = 'C:/Google Drive/Eye Tracking/fulleyetest.mp4'
+    root.withdraw()
+    video_path = os.path.join(os.getcwd(), 'eye_test.mp4')
     if not os.path.exists(video_path):
         print("No file found at hardcoded path. Please select a video file.")
-        video_path = filedialog.askopenfilename(title="Select Video File", filetypes=[("Video Files", "*.mp4;*.avi")])
+        try:
+            root.update()
+            video_path = filedialog.askopenfilename(title="Select Video File", parent=root, filetypes=[("Video Files", ("*.mp4", "*.avi"))])
+        except Exception as e:
+            video_path = ""
         if not video_path:
             print("No file selected. Exiting.")
+            root.destroy()
             return
+    root.destroy()
             
     #second parameter is 1 for video 2 for webcam
     process_video(video_path, 1)
 
 if __name__ == "__main__":
-    select_video()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source", choices=["video", "camera"], default="video")
+    parser.add_argument("--camera-index", type=int, default=0)
+    args = parser.parse_args()
+    if args.source == "camera":
+        process_video(None, 2, args.camera_index)
+    else:
+        select_video()
 
 

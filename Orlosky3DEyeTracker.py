@@ -24,15 +24,8 @@ max_observed_distance = 0  # Initialize adaptive radius
 # Function to detect available cameras
 def detect_cameras(max_cams=10):
     available_cameras = []
-    backend = cv2.CAP_DSHOW
-    if sys.platform == "darwin":
-        backend = cv2.CAP_AVFOUNDATION
-    elif sys.platform.startswith("linux"):
-        backend = cv2.CAP_V4L2
-
     for i in range(max_cams):
-        cap = cv2.VideoCapture(i, backend)
-        cap.set(cv2.CAP_PROP_FPS, 30)
+        cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
         if cap.isOpened():
             available_cameras.append(i)
             cap.release()
@@ -808,16 +801,8 @@ def process_camera():
     global selected_camera
     cam_index = int(selected_camera.get())
 
-    backend = cv2.CAP_DSHOW
-    if sys.platform == "darwin":
-        backend = cv2.CAP_AVFOUNDATION
-    elif sys.platform.startswith("linux"):
-        backend = cv2.CAP_V4L2
-
-    cap = cv2.VideoCapture(cam_index, backend)
-    cap.set(cv2.CAP_PROP_FPS, 30)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_EXPOSURE, -6)
 
     if not cap.isOpened():
         print("Error: Could not open camera.")
@@ -841,11 +826,11 @@ def process_camera():
     cv2.destroyAllWindows()
 
 # Process a selected video file
-def process_video():
-    video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4;*.avi")])
-
-    if not video_path:
-        return  # User canceled selection
+def process_video(video_path=None):
+    if video_path is None:
+        video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4;*.avi")])
+        if not video_path:
+            return
 
     cap = cv2.VideoCapture(video_path)
 
@@ -899,4 +884,10 @@ def selection_gui():
 
 # Run GUI to select camera or video
 if __name__ == "__main__":
-    selection_gui()
+    args = sys.argv[1:]
+    if len(args) >= 1 and os.path.isfile(args[0]):
+        if GL_SPHERE_AVAILABLE:
+            app = gl_sphere.start_gl_window()
+        process_video(video_path=args[0])
+    else:
+        selection_gui()

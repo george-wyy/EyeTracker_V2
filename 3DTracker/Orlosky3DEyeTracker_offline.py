@@ -841,11 +841,15 @@ def process_camera():
     cv2.destroyAllWindows()
 
 # Process a selected video file
-def process_video():
-    video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4;*.avi")])
-
-    if not video_path:
-        return  # User canceled selection
+def process_video(video_path=None):
+    if video_path is None:
+        default_path = os.path.join(os.getcwd(), "eye_test.mp4")
+        if os.path.exists(default_path):
+            video_path = default_path
+        else:
+            video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4;*.avi")])
+            if not video_path:
+                return
 
     cap = cv2.VideoCapture(video_path)
 
@@ -897,6 +901,6 @@ def selection_gui():
 
     root.mainloop()
 
-# Run GUI to select camera or video
 if __name__ == "__main__":
-    selection_gui()
+    test_path = os.path.join(os.getcwd(), "eye_test.mp4")
+    process_video(test_path)
